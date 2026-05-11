@@ -265,20 +265,37 @@
     }
 
     .zona-pregunta {
-      margin: 20px 0 24px;
+      margin: 20px 0 18px;
     }
 
     .pregunta {
-      display: inline-block;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 190px;
       font-size: clamp(4.2rem, 11vw, 7.5rem);
       font-weight: 950;
       color: #312e81;
-      margin: 18px 0 24px;
+      margin: 18px 0 18px;
       padding: 28px 40px;
       border-radius: 34px;
       background: linear-gradient(180deg, #ffffff, #eef2ff);
       box-shadow: 0 22px 44px rgba(49, 46, 129, 0.2);
       letter-spacing: -2px;
+    }
+
+    .zona-resultado {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 190px;
+      margin: 16px 0 18px;
+      padding: 28px 40px;
+      border-radius: 34px;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      box-shadow: 0 22px 44px rgba(15, 23, 42, 0.12);
+      border: 2px solid #e0f2fe;
     }
 
     .formulario-respuesta {
@@ -316,10 +333,14 @@
     }
 
     .feedback {
-      min-height: 38px;
-      font-size: 1.25rem;
-      font-weight: 900;
-      margin-bottom: 10px;
+      min-height: 64px;
+      font-size: clamp(1.7rem, 5vw, 3rem);
+      font-weight: 950;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
     }
 
     .feedback.correcto {
@@ -333,7 +354,7 @@
     .racha {
       min-height: 44px;
       color: #b45309;
-      font-size: 1.45rem;
+      font-size: clamp(1.2rem, 4vw, 2rem);
       font-weight: 900;
       margin-top: 12px;
     }
@@ -483,16 +504,24 @@
       }
 
       .zona-pregunta {
-        margin: 8px 0 10px;
+        margin: 8px 0 8px;
       }
 
       .pregunta {
         width: 100%;
+        min-height: 132px;
         font-size: clamp(2.7rem, 14vw, 4.2rem);
         padding: 18px 10px;
-        margin: 8px 0 12px;
+        margin: 8px 0 8px;
         border-radius: 24px;
         letter-spacing: -1px;
+      }
+
+      .zona-resultado {
+        min-height: 132px;
+        margin: 8px 0 10px;
+        padding: 18px 10px;
+        border-radius: 24px;
       }
 
       .formulario-respuesta {
@@ -514,8 +543,8 @@
       }
 
       .feedback {
-        min-height: 28px;
-        font-size: 1rem;
+        min-height: 48px;
+        font-size: clamp(1.35rem, 7vw, 2.2rem);
         margin-bottom: 4px;
       }
 
@@ -558,7 +587,7 @@
 
     <section id="pantallaJuego" class="pantalla">
       <div class="zona-superior-juego">
-        <div class="progreso">Pregunta <span id="numeroPregunta">1</span> de 30</div>
+        <div class="progreso">Pregunta <span id="numeroPregunta">1</span> de <span id="totalPreguntasVista">30</span></div>
         <div id="temporizador" class="temporizador">10</div>
         <div class="marcador">
           <div class="aciertos">Aciertos: <span id="aciertos">0</span></div>
@@ -577,8 +606,11 @@
       </form>
 
       <div id="ayudaVoz" class="ayuda-voz"></div>
-      <div id="feedback" class="feedback"></div>
-      <div id="mensajeRacha" class="racha"></div>
+
+      <div class="zona-resultado">
+        <div id="feedback" class="feedback">Esperando respuesta...</div>
+        <div id="mensajeRacha" class="racha"></div>
+      </div>
 
       <button id="btnTerminar" class="btn-terminar" type="button">Terminar prueba</button>
     </section>
@@ -597,8 +629,8 @@
   </main>
 
   <script>
-    const TOTAL_PREGUNTAS = 30;
-    const SEGUNDOS_POR_PREGUNTA = 10;
+    let totalPreguntas = 30;
+    let segundosPorPregunta = 10;
     const TIEMPO_CORRECTO = 900;
     const TIEMPO_INCORRECTO = 2900;
     const TIEMPO_ANTES_DE_ESCUCHAR = 700;
@@ -619,6 +651,7 @@
     const spanAciertos = document.getElementById('aciertos');
     const spanFallos = document.getElementById('fallos');
     const spanNumeroPregunta = document.getElementById('numeroPregunta');
+    const spanTotalPreguntasVista = document.getElementById('totalPreguntasVista');
     const divTemporizador = document.getElementById('temporizador');
     const divPregunta = document.getElementById('pregunta');
     const formularioRespuesta = document.getElementById('formularioRespuesta');
@@ -646,15 +679,15 @@
     let vozAutomaticaActivada = false;
     let temporizadorEscucha = null;
     let modoConTiempo = false;
-    let segundosRestantes = SEGUNDOS_POR_PREGUNTA;
+    let segundosRestantes = segundosPorPregunta;
     let intervaloTemporizador = null;
     let temporizadorPreguntaAgotado = false;
 
     crearSelectorTablas();
     prepararReconocimientoVoz();
 
-    btnEmpezarSinTiempo.addEventListener('click', () => iniciarJuego(false));
-    btnEmpezarConTiempo.addEventListener('click', () => iniciarJuego(true));
+    btnEmpezarSinTiempo.addEventListener('click', () => configurarEIniciarJuego(false));
+    btnEmpezarConTiempo.addEventListener('click', () => configurarEIniciarJuego(true));
     btnReiniciar.addEventListener('click', reiniciarAplicacion);
     btnTerminar.addEventListener('click', terminarPruebaManualmente);
     btnMicrofono.addEventListener('click', activarVozAutomatica);
@@ -725,6 +758,55 @@
       });
     }
 
+    function configurarEIniciarJuego(conTiempo) {
+      const cantidadPreguntas = pedirNumero(
+        '¿Cuántas multiplicaciones quieres practicar?',
+        totalPreguntas,
+        1,
+        200
+      );
+
+      if (cantidadPreguntas === null) {
+        return;
+      }
+
+      totalPreguntas = cantidadPreguntas;
+
+      if (conTiempo) {
+        const tiempoElegido = pedirNumero(
+          '¿Cuántos segundos quieres tener para cada multiplicación?',
+          segundosPorPregunta,
+          1,
+          120
+        );
+
+        if (tiempoElegido === null) {
+          return;
+        }
+
+        segundosPorPregunta = tiempoElegido;
+      }
+
+      iniciarJuego(conTiempo);
+    }
+
+    function pedirNumero(mensaje, valorPorDefecto, minimo, maximo) {
+      const respuesta = prompt(mensaje, valorPorDefecto);
+
+      if (respuesta === null) {
+        return null;
+      }
+
+      const numero = Number(respuesta);
+
+      if (!Number.isInteger(numero) || numero < minimo || numero > maximo) {
+        alert(`Introduce un número entero entre ${minimo} y ${maximo}.`);
+        return null;
+      }
+
+      return numero;
+    }
+
     function iniciarJuego(conTiempo) {
       tablasSeleccionadas = obtenerTablasSeleccionadas();
 
@@ -748,7 +830,7 @@
 
       divTemporizador.classList.toggle('activo', modoConTiempo);
       divTemporizador.classList.remove('peligro');
-      divTemporizador.textContent = SEGUNDOS_POR_PREGUNTA;
+      divTemporizador.textContent = segundosPorPregunta;
 
       actualizarMarcador();
       cambiarPantalla(pantallaJuego);
@@ -774,6 +856,7 @@
       respuestaCorrecta = factor1 * factor2;
 
       spanNumeroPregunta.textContent = preguntaActual;
+      spanTotalPreguntasVista.textContent = totalPreguntas;
       divPregunta.textContent = `${factor1} × ${factor2} = ?`;
       inputRespuesta.value = '';
       if (!esDispositivoMovil()) {
@@ -782,7 +865,7 @@
       ayudaVoz.textContent = SpeechRecognition
         ? 'Puedes escribir la respuesta o activar la voz automática una sola vez.'
         : 'El reconocimiento de voz no está disponible en este navegador.';
-      divFeedback.textContent = '';
+      divFeedback.textContent = 'Esperando respuesta...';
       divFeedback.className = 'feedback';
 
       if (modoConTiempo) {
@@ -842,8 +925,8 @@
 
       actualizarMarcador();
 
-      if (preguntaActual === TOTAL_PREGUNTAS) {
-        setTimeout(() => mostrarResultadoFinal('Has llegado al final de las 30 preguntas.'), tiempoEspera);
+      if (preguntaActual === totalPreguntas) {
+        setTimeout(() => mostrarResultadoFinal(`Has llegado al final de las ${totalPreguntas} preguntas.`), tiempoEspera);
       } else {
         preguntaActual++;
         setTimeout(generarPregunta, tiempoEspera);
@@ -852,7 +935,7 @@
 
     function iniciarTemporizadorPregunta() {
       detenerTemporizadorPregunta();
-      segundosRestantes = SEGUNDOS_POR_PREGUNTA;
+      segundosRestantes = segundosPorPregunta;
       divTemporizador.textContent = segundosRestantes;
       divTemporizador.classList.add('activo');
       divTemporizador.classList.remove('peligro');
